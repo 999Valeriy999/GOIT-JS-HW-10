@@ -1,25 +1,11 @@
-// Опис у документації
 import flatpickr from 'flatpickr';
-// Додатковий імпорт стилів
 import 'flatpickr/dist/flatpickr.min.css';
-
-// Опис у документації
 import iziToast from 'izitoast';
-// Додатковий імпорт стилів
 import 'izitoast/dist/css/iziToast.min.css';
 
-// HTML елементи
-const dateTimePicker = document.getElementById('datetime-picker');
-const startButton = document.querySelector('[data-start]');
-const daysElement = document.querySelector('[data-days]');
-const hoursElement = document.querySelector('[data-hours]');
-const minutesElement = document.querySelector('[data-minutes]');
-const secondsElement = document.querySelector('[data-seconds]');
-
-// Перемінна для збереження обраної користувачем дати
-let userSelectedDate;
-
-// Настройка flatpickr
+const selector = document.querySelector('#datetime-picker');
+const dataStart = document.querySelector('[data-start]');
+let userSelectedDate = 0;
 const options = {
   enableTime: true,
   time_24hr: true,
@@ -27,68 +13,59 @@ const options = {
   minuteIncrement: 1,
   onClose(selectedDates) {
     userSelectedDate = selectedDates[0];
-
-    if (userSelectedDate < new Date()) {
-      iziToast.error({
-        title: 'Error',
-        message: 'Please choose a date in the future',
+    const currentDate = new Date();
+    if (userSelectedDate < currentDate) {
+      iziToast.warning({
+        color: 'red',
+        message: 'Please choose a date in the future.',
+        position: 'topRight',
       });
-      startButton.disabled = true;
+      dataStart.setAttribute('disabled', true);
     } else {
-      startButton.disabled = false;
+      dataStart.removeAttribute('disabled');
     }
   },
 };
 
-// Иніціалізація flatpickr
-flatpickr(dateTimePicker, options);
-
-// Функція для додавання лідируючого нуля
-function addLeadingZero(value) {
-  return value.toString().padStart(2, '0');
-}
-
-// Функція для перетворення милісекунд в об'єкт з днями, годинами, хвилинами й секундами
+flatpickr(selector, options);
+dataStart.addEventListener('click', startTimer);
 function convertMs(ms) {
   const second = 1000;
   const minute = second * 60;
   const hour = minute * 60;
   const day = hour * 24;
-
+  // Remaining days
   const days = Math.floor(ms / day);
+  // Remaining hours
   const hours = Math.floor((ms % day) / hour);
+  // Remaining minutes
   const minutes = Math.floor(((ms % day) % hour) / minute);
+  // Remaining seconds
   const seconds = Math.floor((((ms % day) % hour) % minute) / second);
-
   return { days, hours, minutes, seconds };
 }
 
-// Обробник натискання кнопки "Start"
-startButton.addEventListener('click', () => {
-  startButton.disabled = true;
-
+function startTimer() {
+  dataStart.setAttribute('disabled', true);
+  selector.setAttribute('disabled', true);
+  let msDifference = userSelectedDate - new Date();
   const intervalId = setInterval(() => {
-    const now = new Date();
-    const timeDifference = userSelectedDate - now;
-
-    if (timeDifference <= 0) {
+    let { days, hours, minutes, seconds } = convertMs(msDifference);
+    document.querySelector('[data-days]').textContent = addZeroOnStart(days);
+    document.querySelector('[data-hours]').textContent = addZeroOnStart(hours);
+    document.querySelector('[data-minutes]').textContent =
+      addZeroOnStart(minutes);
+    document.querySelector('[data-seconds]').textContent =
+      addZeroOnStart(seconds);
+    if (days === 0 && hours === 0 && minutes === 0 && seconds === 0) {
       clearInterval(intervalId);
-      updateTimerDisplay(0, 0, 0, 0);
-      iziToast.success({
-        title: 'Success',
-        message: 'Countdown timer has ended!',
-      });
-    } else {
-      const { days, hours, minutes, seconds } = convertMs(timeDifference);
-      updateTimerDisplay(days, hours, minutes, seconds);
+      dataStart.removeAttribute('disabled');
+      selector.removeAttribute('disabled');
     }
+    msDifference -= 1000;
   }, 1000);
-});
+}
 
-// Функція для поновлення интерфейсу таймера
-function updateTimerDisplay(days, hours, minutes, seconds) {
-  daysElement.textContent = addLeadingZero(days);
-  hoursElement.textContent = addLeadingZero(hours);
-  minutesElement.textContent = addLeadingZero(minutes);
-  secondsElement.textContent = addLeadingZero(seconds);
+function addZeroOnStart(value) {
+  return value < 10 ? '0' + value : value;
 }
